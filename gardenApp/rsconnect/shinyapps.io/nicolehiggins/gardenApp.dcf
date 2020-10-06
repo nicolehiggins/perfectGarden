@@ -1,0 +1,12 @@
+name: gardenApp
+title: gardenApp
+username:
+account: nicolehiggins
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2957811
+bundleId: 3710107
+url: https://nicolehiggins.shinyapps.io/gardenApp/
+when: 1602016768.65114
+asMultiple: FALSE
+asStatic: FALSE

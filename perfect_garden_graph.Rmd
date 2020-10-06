@@ -1,0 +1,134 @@
+---
+title: "Tomatoes of a Perfect Garden"
+author: "Nicole Higgins"
+output: 
+  html_document:
+    df_print: paged
+    code_download: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+```
+
+```{r libraries}
+library(tidyverse)         # for graphing and data cleaning
+library(googlesheets4)     # for reading in data from google sheets
+library(lubridate)         # for working with dates
+library(shiny)
+library(rsconnect)
+theme_set(theme_minimal()) # you could choose a theme here
+gs4_deauth()               #To not have to authorize each time
+```
+
+```{r data}
+# read in the garden data from Google Sheet
+garden_harvest <- read_sheet("https://docs.google.com/spreadsheets/d/1DekSazCzKqPS2jnGhKue7tLxRU3GVL1oxi-4bEM5IWw/edit?usp=sharing") %>% 
+  mutate(date = ymd(date))
+```
+
+The data set tracks the weight of a variety of harvested vegetables over several years. I'm curious which tomato plants showed the fastest growth rate- the largest derivative of harvested weight over time.
+
+```{r}
+# Sept 8
+ggplot(data = subset(garden_harvest, vegetable == "tomatoes")) + 
+  geom_smooth(mapping = aes(x = date, y = weight, color = variety), se = FALSE, show.legend = FALSE) +
+  geom_point(mapping = aes(x = date, y = weight, color = variety), show.legend = FALSE) +
+  facet_wrap(~ variety, nrow = 3) +
+  labs(title = "Tomato Varieties' Growth over Time", x = "Date", y = "Weight [grams]")
+```
+```{r}
+#Sept 15 prep
+garden_harvest %>%
+  filter(vegetable == "tomatoes") %>%
+  group_by(variety) %>%
+  mutate(cum_weight = sum(weight)) %>%
+  slice(1) %>%
+  arrange(desc(cum_weight))
+```
+**Tried to find a better way to sort the facet_wrap, failed (for now)**
+
+```{r, fig.width = 12}
+#Sept 15
+new_order <- c("Amish Paste", "volunteers", "Better Boy", "grape", "Big Beef", "Bonny Best", 
+               "Mortgage Lifter", "Old German", "Cherokee Purple", "Black Krim", "Jet Star", "Brandywine")
+garden_reorder <- arrange(transform(garden_harvest, 
+                                    variety = factor(variety, levels = new_order)), variety)
+garden_reorder %>%
+  filter(vegetable == "tomatoes") %>%
+  group_by(variety) %>%
+  # mutate(cum_weight = sum(weight)) %>%
+  # arrange(cum_weight) %>%      Ended up not needing these as they didn't affect the facet order, curious why?
+  ggplot(aes(x = date, y = weight, ), 
+         show.legend = FALSE) +
+    geom_smooth(se = FALSE, color = "black", size = .5) +
+    geom_point(aes(color = variety)) +
+    facet_wrap(~ variety, nrow = 3) +
+    labs(title = "Tomato Varieties' Growth over Time", 
+         subtitle = "From most harvested to least harvested", 
+         x = "Date", 
+         y = "Weight [grams]") +
+    theme(plot.title = element_text(size = 18, face = "bold"))
+```
+
+```{r, fig.width = 10}
+#Sept 22
+garden_harvest %>%
+  filter(vegetable == "tomatoes") %>%
+  group_by(variety) %>%
+  mutate(cum_weight = sum(weight)) %>%
+  mutate(variety = fct_reorder(variety, cum_weight)) %>% #this still isn't doing what I want it to... help needed
+  ggplot(aes(x = date, y = weight), 
+         show.legend = FALSE) +
+  geom_smooth(se = FALSE, color = "black", size = .5) +
+  geom_point(aes(color = variety), 
+             show.legend = FALSE) +
+  facet_wrap(~ variety, nrow = 3) +
+  labs(title = "Tomato Varieties' Growth over Time", 
+       subtitle = "From most harvested to least harvested", 
+       x = "Date", 
+       y = "Weight [grams]") +
+  theme(plot.title = element_text(size = 18, face = "bold"))
+```
+
+```{r}
+#Oct 6
+ui <- fluidPage(
+  checkboxGroupInput("tomVar", 
+                     "Tomato Varieties [in order of total weight]", 
+                     choices = c(`Amish Paste` = "Amish Paste", Volunteers = "volunteers", `Better Boy` = "Better Boy", 
+                                 Grape = "grape", `Big Beef` = "Big Beef", `Bonny Best` = "Bonny Best", 
+                                 `Mortgage Lifter` = "Mortgage Lifter", `Old German` = "Old German", 
+                                 `Cherokee Purple` = "Cherokee Purple", `Black Krim` = "Black Krim", 
+                                 `Jet Star` = "Jet Star", Brandywine = "Brandywine")),
+  plotOutput(outputId = "timeplot")
+)
+
+server <- function(input, output) {
+  output$timeplot <- renderPlot({
+  garden_harvest %>%
+      filter(vegetable == "tomatoes", 
+             variety %in% input$tomVar) %>%
+      group_by(variety) %>%
+      mutate(cum_weight_lbs = sum(weight)/453.59237) %>%
+      mutate(variety = fct_reorder(variety, 
+                                   cum_weight_lbs,
+                                   .desc = TRUE)) %>%
+      ggplot(aes(x = date, y = weight), 
+             show.legend = FALSE) +
+      geom_smooth(aes(color = variety), 
+                  se = FALSE, 
+                  size = .5) +
+      geom_point(aes(color = variety),
+                 show.legend = FALSE) +
+      labs(title = "Tomato Varieties' Growth over Time",
+           subtitle = "by: Nicole Higgins",
+           x = "Date",
+           y = "Weight [lbs]") +
+      theme(plot.title = element_text(size = 18, face = "bold"))
+  })
+}
+
+# shinyApp(ui = ui, server = server) commented out so it doesn't try to run, see link below
+```
+[`My Garden App`](https://nicolehiggins.shinyapps.io/gardenApp/)
