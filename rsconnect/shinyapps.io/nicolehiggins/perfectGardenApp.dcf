@@ -1,0 +1,12 @@
+name: perfectGardenApp
+title: perfectGardenApp
+username:
+account: nicolehiggins
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 3009638
+bundleId: 3737333
+url: https://nicolehiggins.shinyapps.io/perfectGardenApp/
+when: 1602642587.94331
+asMultiple: FALSE
+asStatic: FALSE
